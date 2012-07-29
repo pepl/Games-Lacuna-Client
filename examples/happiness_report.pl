@@ -33,7 +33,7 @@ my $client = Games::Lacuna::Client->new(
 my $empire  = $client->empire->get_status->{empire};
 
 # reverse hash, to key by name instead of id
-my %planets = map { $empire->{planets}{$_}, $_ } keys %{ $empire->{planets} };
+my %planets = reverse %{ $empire->{planets} };
 
 my $max_length = max map { length } keys %planets;
 
@@ -45,9 +45,9 @@ foreach my $name ( sort keys %planets ) {
     # Load planet data
     my $planet = $client->body( id => $planets{$name} );
     my $body   = $planet->get_status->{body};
-    
+
     next if $body->{type} eq 'space station';
-    
+
     push @results, {
         name      => $name,
         happy     => format_number( $body->{happiness} ),

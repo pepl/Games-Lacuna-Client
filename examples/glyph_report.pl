@@ -8,91 +8,84 @@ use List::Util            (qw( first sum ));
 use Games::Lacuna::Client ();
 use Getopt::Long          (qw(GetOptions));
 
-if ( $^O !~ /MSWin32/) {
+if ( $^O !~ /MSWin32/ ) {
     $Games::Lacuna::Client::PrettyPrint::ansi_color = 1;
 }
 
 my $planet_name;
 my $opt_glyph_type = {};
 GetOptions(
-    'planet=s' => \$planet_name,
-    'c|color!' => \$Games::Lacuna::Client::PrettyPrint::ansi_color,
-    't|type=s' => sub { $opt_glyph_type->{$_[1]} = 1; },
+    'planet=s'      => \$planet_name,
+    'c|color!'      => \$Games::Lacuna::Client::PrettyPrint::ansi_color,
+    't|type=s'      => sub { $opt_glyph_type->{ $_[1] } = 1; },
+    'f|functional!' => sub { $opt_glyph_type->{'Functional Recipes'} = 1; },
+    'd|decorative!' => sub { $opt_glyph_type->{'Decorative Recipes'} = 1; },
 );
 
 my $cfg_file = shift(@ARGV) || 'lacuna.yml';
 unless ( $cfg_file and -e $cfg_file ) {
-  $cfg_file = eval{
-    require File::HomeDir;
-    require File::Spec;
-    my $dist = File::HomeDir->my_dist_config('Games-Lacuna-Client');
-    File::Spec->catfile(
-      $dist,
-      'login.yml'
-    ) if $dist;
-  };
-  unless ( $cfg_file and -e $cfg_file ) {
-    die "Did not provide a config file";
-  }
+    $cfg_file = eval {
+        require File::HomeDir;
+        require File::Spec;
+        my $dist = File::HomeDir->my_dist_config('Games-Lacuna-Client');
+        File::Spec->catfile( $dist, 'login.yml' ) if $dist;
+    };
+    unless ( $cfg_file and -e $cfg_file ) {
+        die "Did not provide a config file";
+    }
 }
 
 my $client = Games::Lacuna::Client->new(
-	cfg_file => $cfg_file,
-	# debug    => 1,
+    cfg_file => $cfg_file,
+
+    # debug    => 1,
 );
 
 # Load the planets
-my $empire  = $client->empire->get_status->{empire};
+my $empire = $client->empire->get_status->{empire};
 
 # reverse hash, to key by name instead of id
-my %planets = map { $empire->{planets}{$_}, $_ } keys %{ $empire->{planets} };
+my %planets = reverse %{ $empire->{planets} };
 
 # Scan each planet
 my %all_glyphs;
 foreach my $name ( sort keys %planets ) {
 
-    next if defined $planet_name && $planet_name ne $name;
+    next if defined $planet_name && lc $planet_name ne lc $name;
 
     # Load planet data
-    my $planet    = $client->body( id => $planets{$name} );
-    my $result    = $planet->get_buildings;
-    my $body      = $result->{status}->{body};
-    
+    my $planet = $client->body( id => $planets{$name} );
+    my $result = $planet->get_buildings;
+    my $body   = $result->{status}->{body};
+
     my $buildings = $result->{buildings};
 
     # Find the Archaeology Ministry
     my $arch_id = first {
-            $buildings->{$_}->{name} eq 'Archaeology Ministry'
-    } keys %$buildings;
+        $buildings->{$_}->{name} eq 'Archaeology Ministry';
+    }
+    keys %$buildings;
 
     next if not $arch_id;
-    
-    my $arch   = $client->building( id => $arch_id, type => 'Archaeology' );
-    my $glyphs = $arch->get_glyphs->{glyphs};
-    
+
+    my $arch = $client->building( id => $arch_id, type => 'Archaeology' );
+    my $glyphs = $arch->get_glyph_summary->{glyphs};
+
     next if !@$glyphs;
-    
+
     printf "%s\n", $name;
     print "=" x length $name;
     print "\n";
-    
+
     @$glyphs = sort { $a->{type} cmp $b->{type} } @$glyphs;
-    
+
     my %glyphs;
-    
+
     for my $glyph (@$glyphs) {
-        $glyphs{$glyph->{type}}++;
-        
-        $all_glyphs{$glyph->{type}} = 0 if not $all_glyphs{$glyph->{type}};
-        $all_glyphs{$glyph->{type}}++;
+        $all_glyphs{ $glyph->{type} } = 0 if not $all_glyphs{ $glyph->{type} };
+        $all_glyphs{ $glyph->{type} } += $glyph->{quantity};
+        printf "%s (%d)\n", ucfirst( $glyph->{type} ), $glyph->{quantity};
     }
-    
-    map {
-        printf "%s (%d)\n", ucfirst( $_ ), $glyphs{$_};
-    } sort keys %glyphs;
-    
-    printf "\t(%d glyphs)\n", sum values %glyphs;
-    
     print "\n";
 }
 
@@ -110,44 +103,54 @@ sub creation_summary {
     my @keys = ( keys %$yml );
     @keys = grep { $opt_glyph_type->{$_} } @keys if keys %$opt_glyph_type;
 
-    for my $title ( @keys )
-    {
-        print _c_('bold white'), "\n$title\n", "=" x length $title, "\n", _c_('reset');
+    for my $title (@keys) {
+        print _c_('bold white'), "\n$title\n", "=" x length $title, "\n",
+          _c_('reset');
         printf qq{%-30s%-10s%s\n}, "Building", "Missing", "Glyph Combine Order";
         print q{-} x 80, "\n";
-        my %recipes = %{$yml->{$title}};
-        for my $glyph ( keys %recipes ){
-            my ($order, $quantity) = @{$recipes{$glyph}}{qw(order quantity)};
+        my %recipes = %{ $yml->{$title} };
+        for my $glyph ( keys %recipes ) {
+            my ( $order, $quantity ) =
+              @{ $recipes{$glyph} }{qw(order quantity)};
             my $missing = reduce {
-                #print "\t$glyph requires $b [", $quantity->{$b}, ",", $contents{$b} || 0, "]\n";
-                my $m = $quantity->{$b} - ($contents{$b} || 0);
+
+#print "\t$glyph requires $b [", $quantity->{$b}, ",", $contents{$b} || 0, "]\n";
+                my $m = $quantity->{$b} - ( $contents{$b} || 0 );
                 $m = $m < 0 ? 0 : $m;
                 $remaining{$glyph}{$b} = $m;
                 $a + $m;
-            } 0, keys %$quantity;
+            }
+            0, keys %$quantity;
             $ready{$glyph} = $missing;
         }
-        my @available_glyphs = sort { $ready{$a} <=> $ready{$b} || $a cmp $b } keys %recipes;
+        my @available_glyphs =
+          sort { $ready{$a} <=> $ready{$b} || $a cmp $b } keys %recipes;
         my $lvl;
-        for my $glyph ( sort @available_glyphs ){
+        for my $glyph ( sort @available_glyphs ) {
             my $c = {
-                0   => _c_('green'),
-                1   => _c_('yellow'),
-                2   => _c_('red'),
-                3   => _c_('red'),
-                4   => _c_('red'),
-            }->{$ready{$glyph}};
+                0 => _c_('green'),
+                1 => _c_('yellow'),
+                2 => _c_('red'),
+                3 => _c_('red'),
+                4 => _c_('red'),
+            }->{ $ready{$glyph} };
 
             printf qq{%s%-30s%s%-10d}, $c, $glyph, _c_('reset'), $ready{$glyph};
+
             # Print build order.
             my @out;
-            for my $ordered ( @{$recipes{$glyph}{order}} ){
-                my $segment = !$remaining{$glyph}{$ordered} ? _c_('green') : _c_('red');
+            for my $ordered ( @{ $recipes{$glyph}{order} } ) {
+                my $segment =
+                  !$remaining{$glyph}{$ordered} ? _c_('green') : _c_('red');
                 my $no_color_ask = '';
-                if(not $Games::Lacuna::Client::PrettyPrint::ansi_color) {
+                if ( not $Games::Lacuna::Client::PrettyPrint::ansi_color ) {
                     $no_color_ask = $remaining{$glyph}{$ordered} ? '*' : '';
                 }
+<<<<<<< HEAD
                 $segment .= sprintf qq{%-15s}, $ordered . ' (' . ($contents{$ordered} || 0) . ')' . ($no_color_ask );
+=======
+                $segment .= sprintf qq{%-15s}, $ordered . ($no_color_ask);
+>>>>>>> 30c0c028f767eed3869e5a569ee8bb21f45adad6
                 $segment .= _c_('reset');
                 push @out, $segment;
             }
@@ -284,13 +287,6 @@ Decorative Recipes:
     quantity:
       trona: 1
 Functional Recipes:
-  Amalgus Meadow:
-    order:
-      - beryl
-      - trona
-    quantity:
-      beryl: 1
-      trona: 1
   Algae Pond:
     order:
       - uraninite
@@ -298,6 +294,22 @@ Functional Recipes:
     quantity:
       methane: 1
       uraninite: 1
+  Amalgus Meadow:
+    order:
+      - beryl
+      - trona
+    quantity:
+      beryl: 1
+      trona: 1
+  Beeldeban Nest:
+    order:
+      - anthracite
+      - trona
+      - kerogen
+    quantity:
+      anthracite: 1
+      trona: 1
+      kerogen: 1
   Citadel of Knope:
     order:
       - beryl
@@ -345,6 +357,17 @@ Functional Recipes:
     quantity:
       chalcopyrite: 1
       sulfur: 1
+  Gratch's Gauntlet:
+    order:
+      - chromite
+      - bauxite
+      - gold
+      - kerogen
+    quantity:
+      chromite: 1
+      bauxite: 1
+      gold: 1
+      kerogen: 1
   Halls of Vrbansk (A):
     order:
       - goethite
@@ -437,6 +460,17 @@ Functional Recipes:
     quantity:
       halite: 1
       magnetite: 1
+  Oracle of Anid:
+    order:
+      - gold
+      - uraninite
+      - bauxite
+      - goethite
+    quantity:
+      bauxite: 1
+      goethite: 1
+      gold: 1
+      uraninite: 1
   Pantheon of Hagness:
     order:
       - gypsum

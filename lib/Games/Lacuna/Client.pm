@@ -6,7 +6,6 @@ use Carp 'croak';
 use File::Temp qw( tempfile );
 use Cwd        qw( abs_path );
 
-our $VERSION = '0.01';
 use constant DEBUG => 1;
 
 use Games::Lacuna::Client::Module; # base module class
@@ -29,6 +28,7 @@ use Class::XSAccessor {
     cfg_file
     rpc_sleep
     prompt_captcha
+    open_captcha
   )],
 };
 
@@ -56,6 +56,8 @@ sub new {
     $opt{name}     = defined $opt{name} ? $opt{name} : $yml->{empire_name};
     $opt{password} = defined $opt{password} ? $opt{password} : $yml->{empire_password};
     $opt{uri}      = defined $opt{uri} ? $opt{uri} : $yml->{server_uri};
+    $opt{open_captcha}   = defined $opt{open_captcha}   ? $opt{open_captcha}   : $yml->{open_captcha};
+    $opt{prompt_captcha} = defined $opt{prompt_captcha} ? $opt{prompt_captcha} : $yml->{prompt_captcha};
     for (qw(uri api_key session_start session_id session_persistent cache_dir)) {
       if (exists $yml->{$_}) {
         $opt{$_} = defined $opt{$_} ? $opt{$_} : $yml->{$_};
@@ -69,17 +71,20 @@ sub new {
        or not exists $opt{password}
        or not exists $opt{api_key};
   $opt{uri} =~ s/\/+$//;
-  
+
+  my $debug = exists $ENV{GLC_DEBUG} ? $ENV{GLC_DEBUG}
+            :                          0;
+
   my $self = bless {
     session_start      => 0,
     session_id         => 0,
     session_timeout    => 3600*1.8, # server says it's 2h, but let's play it safe.
     session_persistent => 0,
     cfg_file           => undef,
-    debug              => 0,
+    debug              => $debug,
     %opt
   } => $class;
-  
+
   # the actual RPC client
   $self->{rpc} = Games::Lacuna::Client::RPC->new(client => $self);
 
@@ -193,7 +198,7 @@ sub write_cfg {
 
 sub assert_session {
   my $self = shift;
-  
+
   my $now = time();
   if (!$self->session_id || $now - $self->session_start > $self->session_timeout) {
     if ($self->debug) {
@@ -213,22 +218,31 @@ sub assert_session {
 }
 
 sub get_config_file {
-  my ($class, $cfg_file) = @_;
-  unless ( $cfg_file and -e $cfg_file ) {
-    $cfg_file = eval{
-      require File::HomeDir;
-      require File::Spec;
-      my $dist = File::HomeDir->my_dist_config('Games-Lacuna-Client');
-      File::Spec->catfile(
-        $dist,
-        'login.yml'
-      ) if $dist;
-    };
-    unless ( $cfg_file and -e $cfg_file ) {
-      die "Did not provide a config file";
-    }
+  my ($class, $files, $optional) = @_;
+  $files = ref $files eq 'ARRAY' ? $files : [ $files ];
+  $files = [map {
+      my @values = ($_);
+      my $dist_file = eval {
+          require File::HomeDir;
+          File::HomeDir->VERSION(0.93);
+          require File::Spec;
+          my $dist = File::HomeDir->my_dist_config('Games-Lacuna-Client');
+          File::Spec->catfile(
+            $dist,
+            $_
+          ) if $dist;
+      };
+      warn $@ if $@;
+      push @values, $dist_file if $dist_file;
+      @values;
+  } grep { $_ } @$files];
+
+  foreach my $file (@$files) {
+      return $file if ( $file and -e $file );
   }
-  return $cfg_file;
+
+  die "Did not provide a config file (" . join(',', @$files) . ")" unless $optional;
+  return;
 }
 
 
@@ -243,7 +257,7 @@ Games::Lacuna::Client - An RPC client for the Lacuna Expanse
 
   use Games::Lacuna::Client;
   my $client = Games::Lacuna::Client->new(cfg_file => 'path/to/myempire.yml');
-  
+
   # or manually:
   my $client = Games::Lacuna::Client->new(
     uri      => 'https://path/to/server',
@@ -253,10 +267,10 @@ Games::Lacuna::Client - An RPC client for the Lacuna Expanse
     #session_peristent => 1, # only makes sense with cfg_file set!
     #debug    => 1,
   );
-  
+
   my $res = $client->alliance->find("The Understanding");
   my $id = $res->{alliances}->[0]->{id};
-  
+
   use Data::Dumper;
   print Dumper $client->alliance->view_profile( $res->{alliances}->[0]->{id} );
 
@@ -320,10 +334,17 @@ F<examples> subdirectory.
   session_start:
   session_id:
   session_persistent:
+  
+  open_captcha: 1   # Will attempt to open the captcha URL in a browser,
+                    # and prompts for the answer. If the browser-open fails,
+                    # falls back to prompt_captcha behaviour if that setting
+                    # is also true
+  
+  prompt_captcha: 1 # Will print an image URL, and prompts for the answer
 
 =head1 SEE ALSO
 
-API docs at L<http://us1.lacunaexpanse.com/api>.
+API docs at L<http://us1.lacunaexpanse.com/api/>.
 
 A few ready-to-use tools of varying quality live
 in the F<examples> subdirectory.

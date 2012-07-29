@@ -24,10 +24,12 @@ our @BuildingTypes = (qw(
     Beach8
     Beach9
     Beach10
+    Beach11
+    Beach12
+    Beach13
     Bean
     Beeldeban
     BeeldebanNest
-    BlackHoleGenerator
     Bread
     Burger
     Cheese
@@ -105,7 +107,6 @@ our @BuildingTypes = (qw(
     Syrup
     TerraformingLab
     TerraformingPlatform
-    TheDillonForge
     University
     Volcano
     WasteDigester

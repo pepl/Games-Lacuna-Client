@@ -27,6 +27,7 @@ sub api_methods {
           get_species_templates
       )
     ),
+    create                => { default_args => [qw(empire_id)] },
     found                 => { default_args => [qw(empire_id)] },
     update_species        => { default_args => [qw(empire_id)] },
     invite_friend         => { default_args => [qw(session_id)] },
@@ -89,10 +90,10 @@ Games::Lacuna::Client::Empire - The empire module
 
   use Games::Lacuna::Client;
   use Games::Lacuna::Client::Empire;
-  
+
   my $client = Games::Lacuna::Client->new(...);
   my $empire = $client->empire;
-  
+
   my $status = $empire->get_status;
 
 =head1 DESCRIPTION

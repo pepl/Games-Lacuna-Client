@@ -40,6 +40,7 @@ unless ( $cfg_file and -e $cfg_file ) {
 
 my $client = Games::Lacuna::Client->new(
 	cfg_file => $cfg_file,
+	prompt_captcha => 1,
 	# debug    => 1,
 );
 
@@ -47,7 +48,7 @@ my $client = Games::Lacuna::Client->new(
 my $empire  = $client->empire->get_status->{empire};
 
 # reverse hash, to key by name instead of id
-my %planets = map { $empire->{planets}{$_}, $_ } keys %{ $empire->{planets} };
+my %planets = reverse %{ $empire->{planets} };
 
 my $body      = $client->body( id => $planets{$planet_name} );
 my $buildings = $body->get_buildings->{buildings};
@@ -66,14 +67,18 @@ my %defensive_missions = map { $_ => 1 } (
 
 for my $spy ( @{ $intel->view_spies->{spies} } ) {
     next if lc( $spy->{assigned_to}{name} ) ne lc( $target );
+<<<<<<< HEAD
     next unless $spy->{is_available};
     
+=======
+
+>>>>>>> 30c0c028f767eed3869e5a569ee8bb21f45adad6
     my @missions = grep {
         $_->{task} =~ /^$assignment/i
     } @{ $spy->{possible_assignments} };
-    
+
     next if !@missions;
-    
+
     if ( @missions > 1 ) {
         warn "Supplied --assignment matches multiple possible assignments - skipping!\n";
         for my $mission (@missions) {
@@ -81,11 +86,14 @@ for my $spy ( @{ $intel->view_spies->{spies} } ) {
         }
         last;
     }
-    
+
     $assignment = $missions[0]->{task};
+<<<<<<< HEAD
     my $skill = $missions[0]->{skill};
     my $base = $defensive_missions{$assignment} ? 'offense_rating' : 'defense_rating';
     $spy->{score} = $skill eq '*' ? 0 : $spy->{$base} + $spy->{$skill};
+=======
+>>>>>>> 30c0c028f767eed3869e5a569ee8bb21f45adad6
 
     push @spies, $spy;
 }
@@ -104,18 +112,27 @@ sub sort_spies {
 
 for my $spy (sort sort_spies @spies) {
     my $return;
+<<<<<<< HEAD
     
     print "Assigning $spy->{name} ($spy->{score}) to $assignment on $target...";
+=======
+
+>>>>>>> 30c0c028f767eed3869e5a569ee8bb21f45adad6
     eval {
         $return = $intel->assign_spy( $spy->{id}, $assignment );
     };
-    
+
     if ($@) {
         warn "Error: $@\n";
         next;
     }
+<<<<<<< HEAD
     
     printf "%s\n\tMessage: %s\n",
+=======
+
+    printf "%s\n\t%s\n",
+>>>>>>> 30c0c028f767eed3869e5a569ee8bb21f45adad6
         $return->{mission}{result},
         $return->{mission}{reason};
 }

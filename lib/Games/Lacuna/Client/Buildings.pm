@@ -13,6 +13,7 @@ require Games::Lacuna::Client::Buildings::Simple;
 our @BuildingTypes = (qw(
     Archaeology
     ArtMuseum
+    BlackHoleGenerator
     Capitol
     CulinaryInstitute
     Development
@@ -25,7 +26,9 @@ our @BuildingTypes = (qw(
     HallsOfVrbansk
     IBS
     Intelligence
+    IntelTraining
     LibraryOfJith
+    MayhemTraining
     MercenariesGuild
     MiningMinistry
     MissionCommand
@@ -38,6 +41,7 @@ our @BuildingTypes = (qw(
     Parliament
     PlanetaryCommand
     PoliceStation
+    PoliticsTraining
     Security
     Shipyard
     SpacePort
@@ -45,10 +49,13 @@ our @BuildingTypes = (qw(
     StationCommand
     SubspaceSupplyDepot
     TempleOfTheDrajilites
+    TheDillonForge
+    TheftTraining
     ThemePark
     Trade
     Transporter
     Warehouse
+    WasteExchanger
     WasteRecycling
     WaterStorage
   ),
@@ -79,7 +86,7 @@ sub new {
   $class = ref($class)||$class; # no cloning
   my %opt = @_;
   my $btype = delete $opt{type};
-  
+
   # redispatch in factory mode
   if (defined $btype) {
     if ($class ne 'Games::Lacuna::Client::Buildings') {
@@ -96,7 +103,7 @@ sub new {
   # or require building construction via $body->building(...)
   # Let's keep it simple for now.
   #$self->{body_id} = $opt{body_id};
-  
+
   bless $self => $class;
   return $self;
 }

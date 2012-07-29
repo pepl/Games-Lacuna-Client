@@ -37,7 +37,7 @@ my $client = Games::Lacuna::Client->new(
 my $empire = $client->empire->get_status->{empire};
 
 # reverse hash, to key by name instead of id
-my %planets = map { $empire->{planets}{$_}, $_ } keys %{ $empire->{planets} };
+my %planets = reverse %{ $empire->{planets} };
 
 # if no --planet args provided, run on all planets
 if (!@planets ) {
@@ -49,16 +49,16 @@ for my $name (@planets) {
     my $body      = $client->body( id => $planets{$name} );
     my $result    = $body->get_buildings;
     my $buildings = $result->{buildings};
-    
+
     my @park_id = grep {
             $buildings->{$_}->{name} eq 'Park'
     } keys %$buildings;
-    
+
     for my $park_id (@park_id) {
         my $park = $client->building( id => $park_id, type => 'Park' );
-        
+
         next unless $park->view->{party}{can_throw};
-        
+
         $park->throw_a_party;
     }
 }

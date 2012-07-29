@@ -18,6 +18,9 @@
 \bblibdirs$
 ^MANIFEST\.SKIP$
 
+# skip old Makefile.PL
+^Makefile\.PL$
+
 # Avoid Module::Build generated and utility files.
 \bBuild$
 \bBuild.bat$
@@ -40,3 +43,6 @@
 \B\.DS_Store
 #   Mac OSX SMB mount metadata files
 \B\._
+
+## Distzilla package
+dist.ini

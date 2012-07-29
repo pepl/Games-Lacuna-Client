@@ -14,12 +14,14 @@ sub api_methods {
       map {
         ($_ => { default_args => [qw(session_id)] })
       }
-      qw( 
+      qw(
         view_inbox
         view_archived
+        view_trashed
         view_sent
         read_message
         archive_messages
+        trash_messages
         send_message
       )
     ),

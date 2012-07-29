@@ -1,4 +1,4 @@
-#!/usr/bin/perl 
+#!/usr/bin/perl
 use strict;
 use warnings;
 
@@ -49,24 +49,29 @@ undef $market;
 
 # convert the trade information to a more useful form
 my %glyph_prices;
+my %glyph_prices_single;
 for my $trade ( @trades ){
   my @offers = $trade->offer;
   next unless @offers;
-  
+
   # skip mixed offers.
   next unless all { $_->type eq 'glyph' } @offers;
-  
+
   # find the cost per glyph
   my $cost = $trade->cost;
   if( @offers > 1 ){
     $cost = $cost / @offers;
-    
-    # force it to be fractional
-    if( $cost != int $cost ){
-      $cost += 0.0000001;
+  }else{
+    my $glyph = $offers[0]->sub_type;
+    unless(
+      exists $glyph_prices_single{$glyph}
+      &&
+      $glyph_prices_single{$glyph} <= $cost
+    ){
+      $glyph_prices_single{$glyph} = $cost;
     }
   }
-  
+
   for my $offer ( @offers ){
     push @{ $glyph_prices{$offer->sub_type} }, $cost;
   }
@@ -88,13 +93,13 @@ for my $glyph ( keys %glyph_prices ){
   my @prices = @{$glyph_prices{$glyph}};
   my $max   = max @prices;
   my $min   = min @prices;
-  
+
   # smallest price for single glyph
-  my $min_s = min grep { $_ == int $_ } @prices;
-  
+  my $min_s = $glyph_prices_single{$glyph} || '';
+
   my $sum   = sum @prices;
   my $mean = $sum / @prices;
-  
+
   push @glyph, [$glyph,$min,$min_s,$mean,$max,scalar @prices];
   $totals[0] += $min;
 
@@ -115,9 +120,9 @@ for my $glyph ( keys %glyph_prices ){
 # print the body of the table
 for my $arr ( @glyph ){
   my($glyph,@n) = @$arr;
-  
+
   my $pad = ' 'x((12 - length $glyph) / 2);
-  
+
   printf '| %-12s | ', $glyph;
   my $count = sprintf '%4i ', pop @n;
   @n = map {stringify($_)} @n;
@@ -163,9 +168,9 @@ if( @missing ){
 # function that simplifies printing of the table
 sub stringify{
   my($n) = (@_,$_);
-  
+
   return ' 'x5 unless length $n;
-  
+
   if( $n == int $n ){
     return sprintf '%2i   ', $n;
   }else{

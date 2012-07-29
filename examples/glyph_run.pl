@@ -22,7 +22,7 @@ GetOptions(
 
 usage() if !@glyphs;
 
-my $cfg_file = Games::Lacuna::Client->get_config_file(shift(@ARGV) || 'lacuna.yml');
+my $cfg_file = Games::Lacuna::Client->get_config_file([shift(@ARGV), 'lacuna.yml']);
 sleep((localtime)[2]) if ($use_delay);
 
 my $client = Games::Lacuna::Client->new(
@@ -34,7 +34,7 @@ my $client = Games::Lacuna::Client->new(
 my $empire  = $client->empire->get_status->{empire};
 
 # reverse hash, to key by name instead of id
-my %planets = map { $empire->{planets}{$_} => $_ } keys %{ $empire->{planets} };
+my %planets = reverse %{ $empire->{planets} };
 my @selected_planets = keys %planets;
 if ($planet_name)
 {
@@ -72,7 +72,7 @@ foreach $planet_name (@selected_planets)
             $return = $building->search_for_glyph($ore);
             $searching = 1;
         };
-        
+
         if ($@) {
             warn "'$planet_name' - Error: $@\n";
             next;
@@ -86,7 +86,7 @@ foreach $planet_name (@selected_planets)
         print "Can't find any of ", (join ',', keys %requestedGlyphs), " on planet '$planet_name'\n";
         next;
     }
-    
+
 }
 
 exit;
