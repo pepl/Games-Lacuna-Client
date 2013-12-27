@@ -13,12 +13,16 @@ use Getopt::Long          (qw(GetOptions));
 
 my @planets;
 my $ships_per_page = 25;
+my $rpc_sleep = 1;
 
+my $cfg_file = 'lacuna.yml';
+$cfg_file = shift(@ARGV) if @ARGV and $ARGV[0] !=~ /^\-/;
 GetOptions(
-    'planet=s' => \@planets,
+    'c|config=s'    => \$cfg_file,
+    'planet=s'	    => \@planets,
+    's|sleep=i'	    => \$rpc_sleep,
 );
 
-my $cfg_file = shift(@ARGV) || 'lacuna.yml';
 unless ( $cfg_file and -e $cfg_file ) {
   $cfg_file = eval{
     require File::HomeDir;
@@ -36,6 +40,7 @@ unless ( $cfg_file and -e $cfg_file ) {
 
 my $client = Games::Lacuna::Client->new(
 	cfg_file => $cfg_file,
+	rpc_sleep => $rpc_sleep,
 	# debug    => 1,
 );
 
@@ -104,3 +109,8 @@ foreach my $ship (sort $by_arrival @ships) {
     }
   }
 }
+
+print "$client->{total_calls} api calls made.\n";
+print "You have made $client->{rpc_count} calls today\n";
+exit;
+

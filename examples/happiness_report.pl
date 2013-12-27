@@ -4,9 +4,10 @@ use strict;
 use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
-use Number::Format        qw( format_number );
 use List::Util            qw( max );
 use Games::Lacuna::Client ();
+
+my $rpcsleep = 2;
 
 my $cfg_file = shift(@ARGV) || 'lacuna.yml';
 unless ( $cfg_file and -e $cfg_file ) {
@@ -26,6 +27,8 @@ unless ( $cfg_file and -e $cfg_file ) {
 
 my $client = Games::Lacuna::Client->new(
 	cfg_file => $cfg_file,
+	rpc_sleep => $rpcsleep,
+	
 	# debug    => 1,
 );
 
@@ -50,8 +53,8 @@ foreach my $name ( sort keys %planets ) {
 
     push @results, {
         name      => $name,
-        happy     => format_number( $body->{happiness} ),
-        happyhour => format_number( $body->{happiness_hour} ),
+        happy     => commify( $body->{happiness}),
+        happyhour => commify( $body->{happiness_hour}),
     };
 }
 
@@ -64,4 +67,10 @@ for my $planet (@results) {
         $planet->{name},
         $planet->{happy},
         $planet->{happyhour};
+}
+
+sub commify {
+    my $text = reverse $_[0];
+    $text =~ s/(\d\d\d)(?=\d)(?!\d*\.)/$1,/g;
+    return scalar reverse $text;
 }
