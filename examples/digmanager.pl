@@ -91,7 +91,7 @@ while (!$finished) {
         # case you get the "Session expired" error.
         $glc = Games::Lacuna::Client->new(
             cfg_file       => $opts{config} || "$FindBin::Bin/../lacuna.yml",
-            rpc_sleep      => 1.333, # 45 per minute, new default is 50 rpc/min
+            rpc_sleep      => 1.5,
         );
 
         output("Starting up at " . localtime() . "\n");
