@@ -207,6 +207,7 @@ our %EXPORT_TAGS = (
             Ravine
             RockyOutcrop
             Sand
+            SmolderingCrater
             TempleOfTheDrajilites
             TheDillonForge
             Volcano
@@ -410,6 +411,7 @@ our %EXPORT_TAGS = (
         SpacePort => [qw(command ship)],
         StationCommand => [qw(command infrastructure space_station_module)],
         Stockpile => [qw(command storage)],
+        SmolderingCrater => [qw(decoration glyph)],
         SubspaceSupplyDepot => [qw(command)],
         SupplyPod => [qw(storage)],
         Syrup => [qw(food)],
@@ -574,6 +576,7 @@ our %EXPORT_TAGS = (
         SpacePort => "Space Port",
         StationCommand => "Station Command Center",
         Stockpile => "Stockpile",
+        SmolderingCrater => "Smoldering Crater",
         SubspaceSupplyDepot => "Subspace Supply Depot",
         SupplyPod => "Supply Pod",
         Syrup => "Algae Syrup Bottler",
