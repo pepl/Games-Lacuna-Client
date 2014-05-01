@@ -10,6 +10,16 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use Games::Lacuna::Client;
 
+=head1 NAME
+
+trash_mail.pl - Trash inbox mail based on tags and substrings
+
+=head1 SYNOPSIS
+
+perl examples/trash_mail.pl --tag parliament --tag alert --tagfilterstring alert:Glyph
+
+=cut
+
 my %message_tags = (
     alert          => 1,
     alliance       => 1,
