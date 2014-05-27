@@ -5,6 +5,7 @@ use warnings;
 use 5.10.0;
 use Getopt::Long qw(GetOptions);
 use Try::Tiny;
+use List::MoreUtils qw(natatime);
 
 use FindBin;
 use lib "$FindBin::Bin/../lib";
@@ -97,25 +98,27 @@ for my $page ( $current_page .. $max_page ) {
 }
 
 say sprintf( 'Deleting %d messages', scalar @$to_be_trashed );
-my $rv = try {
-    $glc->inbox->trash_messages($to_be_trashed);
+my $iter = natatime 1000, @$to_be_trashed;
+while( my @tmp = $iter->() ) {
+    my $rv = try {
+        $glc->inbox->trash_messages(\@tmp);
+    }
+    catch {
+        my $msg = ( ref $_ ) ? $_->text : $_;
+        die("Unable to delete messages: $msg");
+    } or die;
+    say sprintf(
+        'Successfully deleted %d messages tagged with %s, tagfilter: %s',
+        scalar @{ $rv->{'success'} } || 0,
+        join( ',', @{ $inbox_args->{'tags'} } ),
+        defined $opts{tagfilterstring}
+        ? join( ',', @{ $opts{tagfilterstring} } )
+        : 'none'
+    );
+    warn sprintf( 'Failed to delete %d messages',
+        scalar @{ $rv->{'failure'} } || 0 )
+        if scalar @{ $rv->{'failure'} };
 }
-catch {
-    my $msg = ( ref $_ ) ? $_->text : $_;
-    die("Unable to delete messages: $msg");
-} or die;
-
-say sprintf(
-    'Successfully deleted %d messages tagged with %s, tagfilter: %s',
-    scalar @{ $rv->{'success'} } || 0,
-    join( ',', @{ $inbox_args->{'tags'} } ),
-    defined $opts{tagfilterstring}
-    ? join( ',', @{ $opts{tagfilterstring} } )
-    : 'none'
-);
-warn sprintf( 'Failed to delete %d messages',
-    scalar @{ $rv->{'failure'} } || 0 )
-    if scalar @{ $rv->{'failure'} };
 
 say "$glc->{total_calls} api calls made.\n";
 say "You have made $glc->{rpc_count} calls today\n";
