@@ -25,6 +25,7 @@ GetOptions(\%opts,
 	'planet|colony=s@',
 	'max-level|maxlevel=i',
 	'config=s',
+    'match=s@',
 	'pause=i',
 	'attempts=i',
 	'skip-platforms',
@@ -117,6 +118,13 @@ BUILDING:
 			next BUILDING if $building->{level} != $level;
 			
 			my $type = building_type_from_label( $building->{name} );
+
+            if (scalar @{$opts{match}} and grep { $building->{name} !~ /\Q$_\E/ } @{$opts{match}}) {
+                printf "Did not match: %s\n", _building( $building )
+                    if $opts{verbose};
+
+                next BUILDING;
+            }
 			
 			if ( $opts{'skip-platform'} && $type =~ /Platform$/ ) {
 				printf "Skipping platform: %s\n", _building( $building )
