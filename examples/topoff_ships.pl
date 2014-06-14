@@ -8,8 +8,7 @@ use Games::Lacuna::Client ();
 use Getopt::Long          (qw(GetOptions));
 use POSIX                 (qw(floor));
 use DateTime;
-use Date::Parse;
-use Date::Format;
+use DateTime::Format::Strptime;
 use JSON;
 use utf8;
 
@@ -86,9 +85,13 @@ use utf8;
   usage() if $opts{h} || !$ok;
 
   my $glc = Games::Lacuna::Client->new(
-	cfg_file => $opts{config},
-        rpc_sleep => $opts{sleep},
-	 #debug    => 1,
+    cfg_file => $opts{config},
+    rpc_sleep => $opts{sleep},
+    #debug    => 1,
+  );
+
+  my $date_parser = DateTime::Format::Strptime->new(
+    pattern => '%d %m %Y %T %z',
   );
 
   my $json = JSON->new->utf8(1);
@@ -179,8 +182,32 @@ use utf8;
       SHIPYARD:
       for my $sy_id ( sort {$buildings->{$b}->{level} <=> $buildings->{$a}->{level} } @sy_id) {
         my $sy_pt = $glc->building( id => $sy_id, type => "Shipyard" );
+
+        my $view_build_queue_result;
+        eval { $view_build_queue_result = $sy_pt->view_build_queue(); };
+        if ($@) {
+          warn "$@ error!\n";
+          next SHIPYARD;
+        }
+
+        my $number_ships_building = $view_build_queue_result->{number_of_ships_building};
+        if ( $number_ships_building ) {
+            print "We have $number_ships_building ships building.\n";
+            my $date_completed = $date_parser->parse_datetime(
+              $view_build_queue_result->{ships_building}->[-1]->{date_completed}
+            );
+            if ( not defined $date_completed ) {
+              warn "Could not parse date_completed.";
+              next SHIPYARD;
+            }
+            $date_completed->set_time_zone('UTC');
+            my $duration = $date_completed->subtract_datetime_absolute(DateTime->now( time_zone => 'UTC' ));
+            printf("Waiting for current builds to end. Sleeping %d seconds\n", $duration->in_units('seconds'));
+            sleep($duration->in_units('seconds'));
+        }
+
         my $return = eval {
-                       $buildables = $sy_pt->get_buildable();
+          $buildables = $sy_pt->get_buildable();
         };
         if ($@) {
           print "$@ error!\n";
@@ -189,7 +216,13 @@ use utf8;
         $output->{"$pname"}->{buildables}->{$sy_id} = $return;
         unless ($buildables->{buildable}->{$ship_build}->{can} == 1) {
           printf("Can not build %s at Shipyard: %s skipping planet!\n", $ship_build, $sy_id);
-          next PLANET;
+        #use Data::Dumper;
+        #warn "buildable:";
+        #warn Dumper $buildables->{buildable}->{$ship_build};
+        #warn "build queue";
+          eval { $view_build_queue_result = $sy_pt->view_build_queue(); };
+        #warn Dumper $view_build_queue_result;
+          next SHIPYARD;
         }
         my $ships_to_queue = $build_num - $queued_ships;
         if ($ships_to_queue > $buildables->{docks_available}) {
@@ -204,7 +237,7 @@ use utf8;
         if ($ships_to_queue > 0) {
           my $built;
           $return = eval {
-                       $built = $sy_pt->build_ship($ship_build, $ships_to_queue);
+            $built = $sy_pt->build_ship($ship_build, $ships_to_queue);
           };
           if ($@) {
             print "$@ error!\n"; #Better error handling needed.
