@@ -25,6 +25,7 @@ GetOptions(\%opts,
 	'planet|colony=s@',
 	'max-level|maxlevel=i',
 	'config=s',
+    'match=s@',
 	'pause=i',
 	'attempts=i',
 	'skip-platforms',
@@ -104,7 +105,7 @@ for my $planet_name ( keys %planets ) {
 			# refresh building levels
 			$buildings = $planet->get_buildings->{buildings};
 		}
-		
+
 BUILDING:
 		for my $id ( sort keys %$buildings ) {
 			if ( $opts{queue} && !$queue ) {
@@ -117,6 +118,13 @@ BUILDING:
 			next BUILDING if $building->{level} != $level;
 			
 			my $type = building_type_from_label( $building->{name} );
+
+            if (defined $opts{match} and not grep { $building->{name} =~ /$_/ } @{$opts{match}}) {
+                printf "Did not match: %s\n", _building( $building )
+                    if $opts{verbose};
+
+                next BUILDING;
+            }
 			
 			if ( $opts{'skip-platform'} && $type =~ /Platform$/ ) {
 				printf "Skipping platform: %s\n", _building( $building )
