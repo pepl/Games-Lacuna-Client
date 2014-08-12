@@ -15,7 +15,8 @@ use Games::Lacuna::Client::Types qw( building_type_from_label get_tags );
 $| = 1;
 
 my %opts = (
-    'max-level' => 29,  # I know 30 is max, but for planets with a lot of spaceports, too much energy
+    'max-level' => 30,
+    'start-level' => 1,
     'pause'     => 3,
     'attempts'  => 3,
     'config'    => "lacuna.yml",
@@ -24,6 +25,7 @@ my %opts = (
 GetOptions(\%opts,
     'planet|colony=s@',
     'max-level|maxlevel=i',
+    'start-level|startlevel=i',
     'config=s',
     'match=s@',
     'include-glyph-buildings',
@@ -32,6 +34,7 @@ GetOptions(\%opts,
     'skip-platforms',
     'skip-if-busy',
     'queue',
+    'subsidize',
     'single-level',
     'help',
     'verbose',
@@ -63,7 +66,7 @@ for my $planet_name ( keys %planets ) {
     my $queue;
     my $first_upgrade_level;
 
-    for my $level ( 1 .. $opts{'max-level'}-1 ) {
+    for my $level ( $opts{'start-level'} .. $opts{'max-level'}-1 ) {
         my $status    = $planet->get_buildings;
         my $buildings = $status->{buildings};
 
@@ -173,7 +176,15 @@ ATTEMPT:
 
             next BUILDING if !$status;
 
-            if ( $opts{queue} ) {
+            if ( $opts{subsidize} and not $opts{queue} ) {
+                $devmin ||= get_dev_min( $glc, $buildings );
+
+                next BUILDING unless $devmin;
+                print "Subsidizing build\n";
+                $devmin->subsidize_build_queue;
+                sleep 1;
+            }
+            elsif ( $opts{queue} ) {
                 $first_upgrade_level ||= $level;
 
                 $queue--;
@@ -197,7 +208,7 @@ sub get_dev_min {
     } keys %$buildings;
 
     if ( !$id ) {
-        print "--queue opt provided, but no Development Ministry found!\n";
+        warn "Could not find Development Ministry\n";
         return;
     }
 
@@ -237,7 +248,7 @@ ${message}Usage: $0 [opts]
         1 or more allowed. If not provided, will process all non-SS colonies.
 
     --max-level LEVEL
-        Defaults to 29.
+        Defaults to 30.
 
     --pause SECONDS
         Time to wait after each upgrade. Default to 3.
@@ -256,6 +267,11 @@ ${message}Usage: $0 [opts]
 
     --queue
         Fill the Development build queue with upgrades, and then exit.
+        Default false
+
+    --subsidize
+        Subsidize the current build via the Development Ministry.
+        Not to be used together with '--queue'
         Default false
 
     --single-level
