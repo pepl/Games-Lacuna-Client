@@ -9,13 +9,15 @@ use Getopt::Long          (qw(GetOptions));
 
 my $planet_name;
 my $demolish;
+my $cfg_file;
 
 GetOptions(
     'planet=s' => \$planet_name,
+    'config=s' => \$cfg_file,
     'demolish' => \$demolish,
 );
 
-my $cfg_file = shift(@ARGV) || 'lacuna.yml';
+$cfg_file ||= "$FindBin::Bin/../lacuna.yml";
 unless ( $cfg_file and -e $cfg_file ) {
   $cfg_file = eval{
     require File::HomeDir;
@@ -23,7 +25,7 @@ unless ( $cfg_file and -e $cfg_file ) {
     my $dist = File::HomeDir->my_dist_config('Games-Lacuna-Client');
     File::Spec->catfile(
       $dist,
-      'login.yml'
+      'lacuna.yml'
     ) if $dist;
   };
   unless ( $cfg_file and -e $cfg_file ) {
@@ -33,6 +35,7 @@ unless ( $cfg_file and -e $cfg_file ) {
 
 my $client = Games::Lacuna::Client->new(
 	cfg_file => $cfg_file,
+    prompt_captcha => 1
 	# debug    => 1,
 );
 
