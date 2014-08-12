@@ -26,6 +26,7 @@ GetOptions(\%opts,
 	'max-level|maxlevel=i',
 	'config=s',
     'match=s@',
+    'include-glyph-buildings',
 	'pause=i',
 	'attempts=i',
 	'skip-platforms',
@@ -133,7 +134,7 @@ BUILDING:
 				next BUILDING;
 			}
 			
-			if ( any { $_ eq 'glyph' } get_tags( $type ) ) {
+			if ( not $opts{'include-glyph-buildings'} and any { $_ eq 'glyph' } get_tags( $type ) ) {
 				printf "Skipping glyph building: %s\n", _building( $building )
 					if $opts{verbose};
 				
